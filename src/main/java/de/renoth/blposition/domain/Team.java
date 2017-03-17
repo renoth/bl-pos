@@ -10,9 +10,6 @@ import java.util.Comparator;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Team implements Comparable<Team>, Serializable {
-    @JsonProperty("ShortName")
-    private String shortName;
-
     @JsonProperty("TeamName")
     private String teamName;
 
@@ -21,14 +18,7 @@ public class Team implements Comparable<Team>, Serializable {
 
     private int points;
 
-    public String getShortName() {
-        return shortName;
-    }
-
-    public void setShortName(String shortName) {
-        this.shortName = shortName;
-    }
-
+    private boolean isTested;
 
     public String getTeamName() {
         return teamName;
@@ -62,12 +52,18 @@ public class Team implements Comparable<Team>, Serializable {
             return result;
         }
 
-        return (int) (otherTeam.id - id);
+        if (isTested) {
+            return 1;
+        } else if (otherTeam.isTested) {
+            return -1;
+        } else {
+            return 1;
+        }
     }
 
     @Override
     public boolean equals(Object obj) {
-        return (obj instanceof Team) && ((Team) obj).getId() == id;
+        return (obj instanceof Team) && ((Team) obj).getId().equals(id);
     }
 
     @Override
@@ -78,5 +74,17 @@ public class Team implements Comparable<Team>, Serializable {
     @Override
     public String toString() {
         return teamName + " " + points;
+    }
+
+    public void addPoints(int i) {
+        points += i;
+    }
+
+    public boolean isTested() {
+        return isTested;
+    }
+
+    public void setTested(boolean tested) {
+        isTested = tested;
     }
 }

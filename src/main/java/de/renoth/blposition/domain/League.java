@@ -56,6 +56,6 @@ public class League implements Serializable {
     }
 
     public int getTeamPosition(Team leadingTeam) {
-        return table.headSet(leadingTeam).size();
+        return table.headSet(leadingTeam, true).size();
     }
 }
