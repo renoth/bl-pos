@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public class LeagueService {
 
     private static final Logger LOG = LoggerFactory.getLogger(LeagueService.class);
-    private static final int MAX_TRIES = 500000;
+    private static final int MAX_TRIES = 5000;
     private static final int LEAGUE_SIZE = 18;
     public static final int WIN_POINTS = 3;
 
@@ -66,8 +66,6 @@ public class LeagueService {
             final int[] currentWorst = {0};
             final int[] tries = {0};
 
-            team.setTested(true);
-
             League newLeague = SerializationUtils.clone(league);
 
             if (newLeague.getTeamPosition(team) == LEAGUE_SIZE) {
@@ -75,7 +73,9 @@ public class LeagueService {
                 return;
             }
 
-            newLeague.getTable().headSet(team, true).last().setTested(true);
+            team = newLeague.getTable().headSet(team, true).last();
+
+            team.setTested(true);
 
             List<Match> openMatches = newLeague.getMatches().stream()
                     .filter(match -> match.getResult().equals(MatchResult.UNDECIDED))
@@ -83,17 +83,105 @@ public class LeagueService {
 
             List<Team> relevantTeams = new ArrayList<>();
 
-            updateRelevantTeams(newLeague, relevantTeams, team, currentMatchday[0]);
+            updateRelevantTeams(newLeague, relevantTeams, team, currentMatchday[0], false);
 
-            calculatePossibleOutcome(newLeague, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
+            calculatePossibleWorstOutcome(newLeague, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
             LOG.info(team.getTeamName() + " worst placement is " + currentWorst[0] + " after " + tries[0] + " tries");
+
+            updateRelevantTeams(newLeague, relevantTeams, team, currentMatchday[0], true);
+
+            int[] currentBest = {100};
+
+            calculatePossibleBestOutcome(newLeague, team, openMatches, relevantTeams, currentMatchday, currentBest, tries);
+
+            LOG.info(team.getTeamName() + " best placement is " + currentBest[0] + " after " + tries[0] + " tries");
         });
 
         league.updateTable();
     }
 
-    private void calculatePossibleOutcome(League league, Team team, List<Match> openMatches, List<Team> relevantTeams, int[] currentMatchday, int[] currentWorst, int[] tries) {
+    private void calculatePossibleBestOutcome(League league, Team team, List<Match> openMatches, List<Team> relevantTeams, int[] currentMatchday, int[] currentBest, int[] tries) {
+        if (openMatches.size() == 0) {
+            tries[0]++;
+            league.updateTable();
+            currentBest[0] = Math.min(league.getTeamPosition(team), currentBest[0]);
+            return;
+        }
+
+        Match match = openMatches.remove(0);
+
+        if (currentMatchday[0] != match.getSpieltag()) {
+            currentMatchday[0] = match.getSpieltag();
+            league.updateTable();
+            updateRelevantTeams(league, relevantTeams, team, currentMatchday[0], true);
+
+            if ((league.getTeamPosition(team) - relevantTeams.size()) >= currentBest[0]) {
+                openMatches.add(0, match);
+                return;
+            }
+        }
+
+        if (match.getHomeTeam().equals(team) || (relevantTeams.contains(match.getAwayTeam()) && !relevantTeams.contains(match.getHomeTeam()))) {
+            match.setResult(MatchResult.HOME_WIN);
+            match.getHomeTeam().addPoints(WIN_POINTS);
+
+            calculatePossibleBestOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentBest, tries);
+
+            match.setResult(MatchResult.UNDECIDED);
+            match.getHomeTeam().addPoints(-WIN_POINTS);
+        } else if (match.getAwayTeam().equals(team) || (relevantTeams.contains(match.getHomeTeam()) && !relevantTeams.contains(match.getAwayTeam()))) {
+            match.setResult(MatchResult.AWAY_WIN);
+            match.getAwayTeam().addPoints(WIN_POINTS);
+
+            calculatePossibleBestOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentBest, tries);
+
+            match.setResult(MatchResult.UNDECIDED);
+            match.getAwayTeam().addPoints(-WIN_POINTS);
+        } else {
+            if (currentBest[0] > 1 && tries[0] < MAX_TRIES && relevantTeams.contains(match.getHomeTeam()) && relevantTeams.contains(match.getAwayTeam())) {
+                match.setResult(MatchResult.DRAW);
+                match.getHomeTeam().addPoints(1);
+                match.getAwayTeam().addPoints(1);
+
+                calculatePossibleBestOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentBest, tries);
+
+                match.setResult(MatchResult.UNDECIDED);
+                match.getHomeTeam().addPoints(-1);
+                match.getAwayTeam().addPoints(-1);
+
+                match.setResult(MatchResult.HOME_WIN);
+                match.getHomeTeam().addPoints(WIN_POINTS);
+
+                calculatePossibleBestOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentBest, tries);
+
+                match.setResult(MatchResult.UNDECIDED);
+                match.getHomeTeam().addPoints(-WIN_POINTS);
+
+                match.setResult(MatchResult.AWAY_WIN);
+                match.getAwayTeam().addPoints(WIN_POINTS);
+
+                calculatePossibleBestOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentBest, tries);
+
+                match.setResult(MatchResult.UNDECIDED);
+                match.getAwayTeam().addPoints(-WIN_POINTS);
+            } else {
+                match.setResult(MatchResult.DRAW);
+                match.getHomeTeam().addPoints(1);
+                match.getAwayTeam().addPoints(1);
+
+                calculatePossibleBestOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentBest, tries);
+
+                match.setResult(MatchResult.UNDECIDED);
+                match.getHomeTeam().addPoints(-1);
+                match.getAwayTeam().addPoints(-1);
+            }
+        }
+
+        openMatches.add(0, match);
+    }
+
+    private void calculatePossibleWorstOutcome(League league, Team team, List<Match> openMatches, List<Team> relevantTeams, int[] currentMatchday, int[] currentWorst, int[] tries) {
         if (openMatches.size() == 0) {
             tries[0]++;
             league.updateTable();
@@ -106,7 +194,7 @@ public class LeagueService {
         if (currentMatchday[0] != match.getSpieltag()) {
             currentMatchday[0] = match.getSpieltag();
             league.updateTable();
-            updateRelevantTeams(league, relevantTeams, team, currentMatchday[0]);
+            updateRelevantTeams(league, relevantTeams, team, currentMatchday[0], false);
 
             if ((relevantTeams.size() + league.getTeamPosition(team)) <= currentWorst[0]) {
                 openMatches.add(0, match);
@@ -118,7 +206,7 @@ public class LeagueService {
             match.setResult(MatchResult.AWAY_WIN);
             match.getAwayTeam().addPoints(WIN_POINTS);
 
-            calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
+            calculatePossibleWorstOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
             match.setResult(MatchResult.UNDECIDED);
             match.getAwayTeam().addPoints(-WIN_POINTS);
@@ -126,7 +214,7 @@ public class LeagueService {
             match.setResult(MatchResult.HOME_WIN);
             match.getHomeTeam().addPoints(WIN_POINTS);
 
-            calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
+            calculatePossibleWorstOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
             match.setResult(MatchResult.UNDECIDED);
             match.getHomeTeam().addPoints(-WIN_POINTS);
@@ -136,7 +224,7 @@ public class LeagueService {
                 match.getHomeTeam().addPoints(1);
                 match.getAwayTeam().addPoints(1);
 
-                calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
+                calculatePossibleWorstOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
                 match.setResult(MatchResult.UNDECIDED);
                 match.getHomeTeam().addPoints(-1);
@@ -145,7 +233,7 @@ public class LeagueService {
                 match.setResult(MatchResult.HOME_WIN);
                 match.getHomeTeam().addPoints(WIN_POINTS);
 
-                calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
+                calculatePossibleWorstOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
                 match.setResult(MatchResult.UNDECIDED);
                 match.getHomeTeam().addPoints(-WIN_POINTS);
@@ -153,7 +241,7 @@ public class LeagueService {
                 match.setResult(MatchResult.AWAY_WIN);
                 match.getAwayTeam().addPoints(WIN_POINTS);
 
-                calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
+                calculatePossibleWorstOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
                 match.setResult(MatchResult.UNDECIDED);
                 match.getAwayTeam().addPoints(-WIN_POINTS);
@@ -162,7 +250,7 @@ public class LeagueService {
                 match.getHomeTeam().addPoints(1);
                 match.getAwayTeam().addPoints(1);
 
-                calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
+                calculatePossibleWorstOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
                 match.setResult(MatchResult.UNDECIDED);
                 match.getHomeTeam().addPoints(-1);
@@ -173,7 +261,7 @@ public class LeagueService {
         openMatches.add(0, match);
     }
 
-    public void updateRelevantTeams(League league, List<Team> relevantTeams, Team leadingTeam, int currentMatchday) {
+    public void updateRelevantTeams(League league, List<Team> relevantTeams, Team calculatedTeam, int currentMatchday, boolean isBestOutcome) {
         int MAX_MATCHDAY = 34;
         int maxPossiblePoints = (MAX_MATCHDAY - currentMatchday + 1) * WIN_POINTS;
 
@@ -184,12 +272,18 @@ public class LeagueService {
         while (relevantTeamsIterator.hasNext()) {
             Team team = relevantTeamsIterator.next();
 
-            if (team.equals(leadingTeam)) {
+            if (team.equals(calculatedTeam)) {
                 continue;
             }
 
-            if (leadingTeam.getPoints() - team.getPoints() <= maxPossiblePoints && leadingTeam.getPoints() > team.getPoints()) {
-                relevantTeams.add(team);
+            if (!isBestOutcome) {
+                if (calculatedTeam.getPoints() - team.getPoints() <= maxPossiblePoints && calculatedTeam.getPoints() > team.getPoints()) {
+                    relevantTeams.add(team);
+                }
+            } else {
+                if (team.getPoints() - calculatedTeam.getPoints() <= maxPossiblePoints && calculatedTeam.getPoints() < team.getPoints()) {
+                    relevantTeams.add(team);
+                }
             }
         }
     }

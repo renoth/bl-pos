@@ -1,12 +1,9 @@
 package de.renoth.blposition.domain;
 
-import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 
 import java.io.Serializable;
-import java.util.Comparator;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Team implements Comparable<Team>, Serializable {
@@ -19,6 +16,8 @@ public class Team implements Comparable<Team>, Serializable {
     private int points;
 
     private boolean isTested;
+
+    private boolean calculateBest;
 
     public String getTeamName() {
         return teamName;

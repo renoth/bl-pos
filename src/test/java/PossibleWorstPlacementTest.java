@@ -40,20 +40,20 @@ public class PossibleWorstPlacementTest {
 
         List<Team> relevantTeams = new ArrayList<>();
 
-        leagueService.updateRelevantTeams(league, relevantTeams, team, currentMatchday[0]);
+        leagueService.updateRelevantTeams(league, relevantTeams, team, currentMatchday[0], false);
 
         Assert.assertTrue(relevantTeams.size() == 11);
 
         currentMatchday[0] = 26;
 
-        leagueService.updateRelevantTeams(league, relevantTeams, team, currentMatchday[0]);
+        leagueService.updateRelevantTeams(league, relevantTeams, team, currentMatchday[0], false);
 
         Assert.assertTrue(relevantTeams.size() == 8);
 
         team.setPoints(49);
         currentMatchday[0] = 25;
 
-        leagueService.updateRelevantTeams(league, relevantTeams, team, currentMatchday[0]);
+        leagueService.updateRelevantTeams(league, relevantTeams, team, currentMatchday[0], false);
 
         Assert.assertTrue(relevantTeams.size() == 15);
 
