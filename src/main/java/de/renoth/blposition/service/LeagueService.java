@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.renoth.blposition.domain.League;
 import de.renoth.blposition.domain.Match;
+import de.renoth.blposition.domain.MatchResult;
 import de.renoth.blposition.domain.Team;
 import de.renoth.blposition.domain.deserializer.TeamDeserializer;
 import org.apache.commons.io.IOUtils;
@@ -27,8 +28,9 @@ import java.util.stream.Collectors;
 public class LeagueService {
 
     private static final Logger LOG = LoggerFactory.getLogger(LeagueService.class);
-    private static final int MAX_TRIES = 50000000;
+    private static final int MAX_TRIES = 500000;
     private static final int LEAGUE_SIZE = 18;
+    public static final int WIN_POINTS = 3;
 
 
     @PostConstruct
@@ -36,11 +38,11 @@ public class LeagueService {
         List<Match> matches = getMatches();
 
         matches.parallelStream().forEach(match -> {
-            if (match.getResult() == 1) {
-                match.getHomeTeam().addPoints(3);
-            } else if (match.getResult() == 2) {
-                match.getAwayTeam().addPoints(3);
-            } else if (match.getResult() == 0) {
+            if (match.getResult() == MatchResult.HOME_WIN) {
+                match.getHomeTeam().addPoints(WIN_POINTS);
+            } else if (match.getResult() == MatchResult.AWAY_WIN) {
+                match.getAwayTeam().addPoints(WIN_POINTS);
+            } else if (match.getResult() == MatchResult.DRAW) {
                 match.getHomeTeam().addPoints(1);
                 match.getAwayTeam().addPoints(1);
             }
@@ -53,14 +55,14 @@ public class LeagueService {
         return league;
     }
 
-    public void possibleWorstPlacementForLeadingTeam() throws IOException {
+    public void calculatePossibleWorstPlacement() throws IOException {
         LOG.info("Calculate possible worst placements for league teams:");
 
         League league = getCurrentLeague();
         SortedSet<Team> teams = league.getTable().descendingSet();
 
         teams.stream().forEach(team -> {
-            final int[] currentMatchday = {25};
+            final int[] currentMatchday = {0};
             final int[] currentWorst = {0};
             final int[] tries = {0};
 
@@ -68,15 +70,16 @@ public class LeagueService {
 
             League newLeague = SerializationUtils.clone(league);
 
-            if (newLeague.getTeamPosition(team) == 18) {
-                LOG.info(team.getTeamName() + " is fucked anyways.");
+            if (newLeague.getTeamPosition(team) == LEAGUE_SIZE) {
+                LOG.info(team.getTeamName() + " is last, so worst placement is " + LEAGUE_SIZE);
                 return;
             }
 
             newLeague.getTable().headSet(team, true).last().setTested(true);
 
             List<Match> openMatches = newLeague.getMatches().stream()
-                    .filter(match -> match.getResult() < 0).collect(Collectors.toList());
+                    .filter(match -> match.getResult().equals(MatchResult.UNDECIDED))
+                    .collect(Collectors.toList());
 
             List<Team> relevantTeams = new ArrayList<>();
 
@@ -93,11 +96,8 @@ public class LeagueService {
     private void calculatePossibleOutcome(League league, Team team, List<Match> openMatches, List<Team> relevantTeams, int[] currentMatchday, int[] currentWorst, int[] tries) {
         if (openMatches.size() == 0) {
             tries[0]++;
-
             league.updateTable();
-
             currentWorst[0] = Math.max(league.getTeamPosition(team), currentWorst[0]);
-
             return;
         }
 
@@ -115,56 +115,56 @@ public class LeagueService {
         }
 
         if (match.getHomeTeam().equals(team) || (relevantTeams.contains(match.getAwayTeam()) && !relevantTeams.contains(match.getHomeTeam()))) {
-            match.setResult(2);
-            match.getAwayTeam().addPoints(3);
+            match.setResult(MatchResult.AWAY_WIN);
+            match.getAwayTeam().addPoints(WIN_POINTS);
 
             calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
-            match.setResult(-1);
-            match.getAwayTeam().addPoints(-3);
+            match.setResult(MatchResult.UNDECIDED);
+            match.getAwayTeam().addPoints(-WIN_POINTS);
         } else if (match.getAwayTeam().equals(team) || (relevantTeams.contains(match.getHomeTeam()) && !relevantTeams.contains(match.getAwayTeam()))) {
-            match.setResult(1);
-            match.getHomeTeam().addPoints(3);
+            match.setResult(MatchResult.HOME_WIN);
+            match.getHomeTeam().addPoints(WIN_POINTS);
 
             calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
-            match.setResult(-1);
-            match.getHomeTeam().addPoints(-3);
+            match.setResult(MatchResult.UNDECIDED);
+            match.getHomeTeam().addPoints(-WIN_POINTS);
         } else {
             if (currentWorst[0] < LEAGUE_SIZE && tries[0] < MAX_TRIES && relevantTeams.contains(match.getHomeTeam()) && relevantTeams.contains(match.getAwayTeam())) {
-                match.setResult(0);
+                match.setResult(MatchResult.DRAW);
                 match.getHomeTeam().addPoints(1);
                 match.getAwayTeam().addPoints(1);
 
                 calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
-                match.setResult(-1);
+                match.setResult(MatchResult.UNDECIDED);
                 match.getHomeTeam().addPoints(-1);
                 match.getAwayTeam().addPoints(-1);
 
-                match.setResult(1);
-                match.getHomeTeam().addPoints(3);
+                match.setResult(MatchResult.HOME_WIN);
+                match.getHomeTeam().addPoints(WIN_POINTS);
 
                 calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
-                match.setResult(-1);
-                match.getHomeTeam().addPoints(-3);
+                match.setResult(MatchResult.UNDECIDED);
+                match.getHomeTeam().addPoints(-WIN_POINTS);
 
-                match.setResult(2);
-                match.getAwayTeam().addPoints(3);
+                match.setResult(MatchResult.AWAY_WIN);
+                match.getAwayTeam().addPoints(WIN_POINTS);
 
                 calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
-                match.setResult(-1);
-                match.getAwayTeam().addPoints(-3);
+                match.setResult(MatchResult.UNDECIDED);
+                match.getAwayTeam().addPoints(-WIN_POINTS);
             } else {
-                match.setResult(0);
+                match.setResult(MatchResult.DRAW);
                 match.getHomeTeam().addPoints(1);
                 match.getAwayTeam().addPoints(1);
 
                 calculatePossibleOutcome(league, team, openMatches, relevantTeams, currentMatchday, currentWorst, tries);
 
-                match.setResult(-1);
+                match.setResult(MatchResult.UNDECIDED);
                 match.getHomeTeam().addPoints(-1);
                 match.getAwayTeam().addPoints(-1);
             }
@@ -175,7 +175,7 @@ public class LeagueService {
 
     public void updateRelevantTeams(League league, List<Team> relevantTeams, Team leadingTeam, int currentMatchday) {
         int MAX_MATCHDAY = 34;
-        int maxPossiblePoints = (MAX_MATCHDAY - currentMatchday + 1) * 3;
+        int maxPossiblePoints = (MAX_MATCHDAY - currentMatchday + 1) * WIN_POINTS;
 
         relevantTeams.clear();
 
@@ -199,7 +199,7 @@ public class LeagueService {
 
         ObjectMapper mapper = new ObjectMapper();
 
-        String json = getJsonFrom("https://www.openligadb.de/api/getmatchdata/bl1/2016");
+        String json = getJsonFrom("http://www.openligadb.de/api/getmatchdata/bl1/2016");
         JavaType matchListType = mapper.getTypeFactory().constructCollectionType(List.class, Match.class);
         List<Match> matches = mapper.readValue(json, matchListType);
 
@@ -209,7 +209,7 @@ public class LeagueService {
     public void initializeTeams() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
 
-        String json = getJsonFrom("https://www.openligadb.de/api/getavailableteams/bl1/2016");
+        String json = getJsonFrom("http://www.openligadb.de/api/getavailableteams/bl1/2016");
         JavaType teamListType = mapper.getTypeFactory().constructCollectionType(List.class, Team.class);
         List<Team> teams = mapper.readValue(json, teamListType);
 

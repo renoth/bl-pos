@@ -24,7 +24,7 @@ public class Match implements Serializable {
 
     private int spieltag;
 
-    private int result;
+    private MatchResult result;
     private int homeGoal;
     private int awayGoal;
 
@@ -36,7 +36,7 @@ public class Match implements Serializable {
     @JsonProperty("MatchResults")
     private void unpackResults(List<Map<String, String>> results) {
         if (results.size() == 0) {
-            result = -1;
+            result = MatchResult.UNDECIDED;
             homeGoal = -1;
             awayGoal = -1;
             return;
@@ -58,7 +58,7 @@ public class Match implements Serializable {
         homeGoal = Integer.parseInt(finalResult.get("PointsTeam1"));
         awayGoal = Integer.parseInt(finalResult.get("PointsTeam2"));
 
-        result = homeGoal > awayGoal ? 1 : (homeGoal < awayGoal ? 2 : 0);
+        result = homeGoal > awayGoal ? MatchResult.HOME_WIN : (homeGoal < awayGoal ? MatchResult.AWAY_WIN : MatchResult.DRAW);
     }
 
 
@@ -94,11 +94,11 @@ public class Match implements Serializable {
         this.spieltag = spieltag;
     }
 
-    public int getResult() {
+    public MatchResult getResult() {
         return result;
     }
 
-    public void setResult(int result) {
+    public void setResult(MatchResult result) {
         this.result = result;
     }
 

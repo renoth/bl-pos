@@ -27,7 +27,7 @@ public class PossibleWorstPlacementTest {
 
     @Test
     public void testWorstPlacement() throws IOException {
-        leagueService.possibleWorstPlacementForLeadingTeam();
+        leagueService.calculatePossibleWorstPlacement();
     }
 
     @Test
