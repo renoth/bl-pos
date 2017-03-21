@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public class LeagueService {
 
     private static final Logger LOG = LoggerFactory.getLogger(LeagueService.class);
-    private static final int MAX_TRIES = 5000;
+    private static final int MAX_TRIES = 10000000;
     private static final int LEAGUE_SIZE = 18;
     public static final int WIN_POINTS = 3;
 
@@ -68,14 +68,18 @@ public class LeagueService {
 
             League newLeague = SerializationUtils.clone(league);
 
-            if (newLeague.getTeamPosition(team) == LEAGUE_SIZE) {
-                LOG.info(team.getTeamName() + " is last, so worst placement is " + LEAGUE_SIZE);
-                return;
+            Iterator<Team> iterator = newLeague.getTable().iterator();
+
+            while (iterator.hasNext()) {
+                Team t = iterator.next();
+                if (team.equals(t)) {
+                    team = t;
+                    break;
+                }
             }
 
-            team = newLeague.getTable().headSet(team, true).last();
-
             team.setTested(true);
+
 
             List<Match> openMatches = newLeague.getMatches().stream()
                     .filter(match -> match.getResult().equals(MatchResult.UNDECIDED))
@@ -92,10 +96,14 @@ public class LeagueService {
             updateRelevantTeams(newLeague, relevantTeams, team, currentMatchday[0], true);
 
             int[] currentBest = {100};
+            tries[0] = 0;
+
+            team.setBestOutcome(true);
 
             calculatePossibleBestOutcome(newLeague, team, openMatches, relevantTeams, currentMatchday, currentBest, tries);
 
             LOG.info(team.getTeamName() + " best placement is " + currentBest[0] + " after " + tries[0] + " tries");
+
         });
 
         league.updateTable();
@@ -117,6 +125,7 @@ public class LeagueService {
             updateRelevantTeams(league, relevantTeams, team, currentMatchday[0], true);
 
             if ((league.getTeamPosition(team) - relevantTeams.size()) >= currentBest[0]) {
+                tries[0]++;
                 openMatches.add(0, match);
                 return;
             }
@@ -197,6 +206,7 @@ public class LeagueService {
             updateRelevantTeams(league, relevantTeams, team, currentMatchday[0], false);
 
             if ((relevantTeams.size() + league.getTeamPosition(team)) <= currentWorst[0]) {
+                tries[0]++;
                 openMatches.add(0, match);
                 return;
             }

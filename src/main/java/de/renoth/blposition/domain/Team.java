@@ -17,7 +17,7 @@ public class Team implements Comparable<Team>, Serializable {
 
     private boolean isTested;
 
-    private boolean calculateBest;
+    private boolean bestOutcome;
 
     public String getTeamName() {
         return teamName;
@@ -52,9 +52,9 @@ public class Team implements Comparable<Team>, Serializable {
         }
 
         if (isTested) {
-            return 1;
+            return bestOutcome ? -1 : 1;
         } else if (otherTeam.isTested) {
-            return -1;
+            return otherTeam.bestOutcome ? 1 : -1;
         } else {
             return 1;
         }
@@ -85,5 +85,13 @@ public class Team implements Comparable<Team>, Serializable {
 
     public void setTested(boolean tested) {
         isTested = tested;
+    }
+
+    public void setBestOutcome(boolean bestOutcome) {
+        this.bestOutcome = bestOutcome;
+    }
+
+    public boolean getIsBestOutcome() {
+        return bestOutcome;
     }
 }

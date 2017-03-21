@@ -55,7 +55,13 @@ public class League implements Serializable {
         return sb.toString();
     }
 
-    public int getTeamPosition(Team leadingTeam) {
-        return table.headSet(leadingTeam, true).size();
+    public int getTeamPosition(Team team) {
+        int position = table.headSet(team, true).size();
+
+        if (team.getIsBestOutcome()) {
+            position++;
+        }
+
+        return position;
     }
 }
