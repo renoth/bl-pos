@@ -1,5 +1,6 @@
 package de.renoth.blposition.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -10,14 +11,20 @@ public class Team implements Comparable<Team>, Serializable {
     @JsonProperty("TeamName")
     private String teamName;
 
-    @JsonProperty("TeamId")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY, value = "TeamId")
     private Long id;
 
     private int points;
 
+    @JsonIgnore
     private boolean isTested;
 
+    @JsonIgnore
     private boolean bestOutcome;
+
+    private int bestPostiion;
+
+    private int worstPosition;
 
     public String getTeamName() {
         return teamName;
@@ -79,6 +86,7 @@ public class Team implements Comparable<Team>, Serializable {
         points += i;
     }
 
+    @JsonIgnore
     public boolean isTested() {
         return isTested;
     }
@@ -91,7 +99,24 @@ public class Team implements Comparable<Team>, Serializable {
         this.bestOutcome = bestOutcome;
     }
 
+    @JsonIgnore
     public boolean getIsBestOutcome() {
         return bestOutcome;
+    }
+
+    public int getBestPostiion() {
+        return bestPostiion;
+    }
+
+    public void setBestPostiion(int bestPostiion) {
+        this.bestPostiion = bestPostiion;
+    }
+
+    public int getWorstPosition() {
+        return worstPosition;
+    }
+
+    public void setWorstPosition(int worstPosition) {
+        this.worstPosition = worstPosition;
     }
 }

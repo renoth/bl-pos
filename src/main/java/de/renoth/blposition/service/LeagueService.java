@@ -18,22 +18,23 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.SortedSet;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class LeagueService {
 
     private static final Logger LOG = LoggerFactory.getLogger(LeagueService.class);
-    private static final int MAX_TRIES = 10000000;
+    private static final int MAX_TRIES = 100000;
     private static final int LEAGUE_SIZE = 18;
-    public static final int WIN_POINTS = 3;
+    private static final int WIN_POINTS = 3;
 
+    private static League currentLeague;
 
-    @PostConstruct
+    public Optional<League> getCalculatedLeague() {
+        return Optional.ofNullable(currentLeague);
+    }
+
     public League getCurrentLeague() throws IOException {
         List<Match> matches = getMatches();
 
@@ -55,16 +56,19 @@ public class LeagueService {
         return league;
     }
 
-    public void calculatePossibleWorstPlacement() throws IOException {
+    @PostConstruct
+    public void calculatePossiblePlacements() throws IOException {
         LOG.info("Calculate possible worst placements for league teams:");
 
         League league = getCurrentLeague();
         SortedSet<Team> teams = league.getTable().descendingSet();
 
-        teams.stream().forEach(team -> {
+        teams.stream().forEach(teamToTest -> {
             final int[] currentMatchday = {0};
             final int[] currentWorst = {0};
             final int[] tries = {0};
+
+            Team team = null;
 
             League newLeague = SerializationUtils.clone(league);
 
@@ -72,7 +76,7 @@ public class LeagueService {
 
             while (iterator.hasNext()) {
                 Team t = iterator.next();
-                if (team.equals(t)) {
+                if (teamToTest.equals(t)) {
                     team = t;
                     break;
                 }
@@ -104,9 +108,13 @@ public class LeagueService {
 
             LOG.info(team.getTeamName() + " best placement is " + currentBest[0] + " after " + tries[0] + " tries");
 
+            teamToTest.setBestPostiion(currentBest[0]);
+            teamToTest.setWorstPosition(currentWorst[0]);
         });
 
         league.updateTable();
+
+        currentLeague = league;
     }
 
     private void calculatePossibleBestOutcome(League league, Team team, List<Match> openMatches, List<Team> relevantTeams, int[] currentMatchday, int[] currentBest, int[] tries) {

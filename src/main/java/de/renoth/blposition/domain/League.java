@@ -1,11 +1,14 @@
 package de.renoth.blposition.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 import java.util.*;
 
 public class League implements Serializable {
     private TreeSet<Team> table;
 
+    @JsonIgnore
     private List<Match> matches;
 
     public League(Collection<Team> teams) {
