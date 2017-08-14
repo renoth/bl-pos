@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.hamcrest.Matchers.is;
+
 @RunWith(SpringJUnit4ClassRunner.class)
 @WebAppConfiguration
 @ContextConfiguration(classes = BlPosition.class)
@@ -42,22 +44,19 @@ public class PossibleWorstPlacementTest {
 
         leagueService.updateRelevantTeams(league, relevantTeams, team, currentMatchday[0], false);
 
-        Assert.assertTrue(relevantTeams.size() == 11);
+        Assert.assertThat(relevantTeams.size(), is(11));
 
         currentMatchday[0] = 26;
 
         leagueService.updateRelevantTeams(league, relevantTeams, team, currentMatchday[0], false);
 
-        Assert.assertTrue(relevantTeams.size() == 8);
+        Assert.assertThat(relevantTeams.size(), is(8));
 
         team.setPoints(49);
         currentMatchday[0] = 25;
 
         leagueService.updateRelevantTeams(league, relevantTeams, team, currentMatchday[0], false);
 
-        Assert.assertTrue(relevantTeams.size() == 15);
-
-
+        Assert.assertThat(relevantTeams.size(), is(15));
     }
-
 }

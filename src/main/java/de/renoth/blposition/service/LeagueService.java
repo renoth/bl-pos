@@ -304,7 +304,7 @@ public class LeagueService {
 
         ObjectMapper mapper = new ObjectMapper();
 
-        String json = getJsonFrom("http://www.openligadb.de/api/getmatchdata/bl1/2016");
+        String json = getJsonFrom("https://www.openligadb.de/api/getmatchdata/bl1/2016");
         JavaType matchListType = mapper.getTypeFactory().constructCollectionType(List.class, Match.class);
 
         return mapper.readValue(json, matchListType);
@@ -313,7 +313,7 @@ public class LeagueService {
     private void initializeTeams() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
 
-        String json = getJsonFrom("http://www.openligadb.de/api/getavailableteams/bl1/2016");
+        String json = getJsonFrom("https://www.openligadb.de/api/getavailableteams/bl1/2016");
         JavaType teamListType = mapper.getTypeFactory().constructCollectionType(List.class, Team.class);
         List<Team> teams = mapper.readValue(json, teamListType);
 
