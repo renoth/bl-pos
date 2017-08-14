@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class LeagueService {
 
     private static final Logger LOG = LoggerFactory.getLogger(LeagueService.class);
-    private static final int MAX_TRIES = 100000;
+    private static final int MAX_TRIES = 1000000000;
     private static final int LEAGUE_SIZE = 18;
     private static final int WIN_POINTS = 3;
 
@@ -63,7 +63,7 @@ public class LeagueService {
         League league = getCurrentLeague();
         SortedSet<Team> teams = league.getTable().descendingSet();
 
-        teams.stream().forEach(teamToTest -> {
+        teams.forEach(teamToTest -> {
             final int[] currentMatchday = {0};
             final int[] currentWorst = {0};
             final int[] tries = {0};
@@ -72,10 +72,7 @@ public class LeagueService {
 
             League newLeague = SerializationUtils.clone(league);
 
-            Iterator<Team> iterator = newLeague.getTable().iterator();
-
-            while (iterator.hasNext()) {
-                Team t = iterator.next();
+            for (Team t : newLeague.getTable()) {
                 if (teamToTest.equals(t)) {
                     team = t;
                     break;
@@ -285,11 +282,7 @@ public class LeagueService {
 
         relevantTeams.clear();
 
-        Iterator<Team> relevantTeamsIterator = league.getTable().iterator();
-
-        while (relevantTeamsIterator.hasNext()) {
-            Team team = relevantTeamsIterator.next();
-
+        for (Team team : league.getTable()) {
             if (team.equals(calculatedTeam)) {
                 continue;
             }
@@ -306,19 +299,18 @@ public class LeagueService {
         }
     }
 
-    public List<Match> getMatches() throws IOException {
+    private List<Match> getMatches() throws IOException {
         initializeTeams();
 
         ObjectMapper mapper = new ObjectMapper();
 
         String json = getJsonFrom("http://www.openligadb.de/api/getmatchdata/bl1/2016");
         JavaType matchListType = mapper.getTypeFactory().constructCollectionType(List.class, Match.class);
-        List<Match> matches = mapper.readValue(json, matchListType);
 
-        return matches;
+        return mapper.readValue(json, matchListType);
     }
 
-    public void initializeTeams() throws IOException {
+    private void initializeTeams() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
 
         String json = getJsonFrom("http://www.openligadb.de/api/getavailableteams/bl1/2016");
